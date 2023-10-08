@@ -168,7 +168,7 @@ free_return:
 int cmd_mv(int argc, const char **argv, const char *prefix)
 {
 	int i, flags, gitmodules_modified = 0;
-	int verbose = 0, show_only = 0, force = 0, ignore_errors = 0, ignore_sparse = 0;
+	int verbose = 0, show_only = 0, force = 0, ignore_errors = 0, ignore_sparse = 0, create_parents = 0;
 	struct option builtin_mv_options[] = {
 		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT__DRY_RUN(&show_only, N_("dry run")),
@@ -176,6 +176,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 			   PARSE_OPT_NOCOMPLETE),
 		OPT_BOOL('k', NULL, &ignore_errors, N_("skip move/rename errors")),
 		OPT_BOOL(0, "sparse", &ignore_sparse, N_("allow updating entries outside of the sparse-checkout cone")),
+		OPT_BOOL('p', "parents", &create_parents, N_("create missing parent directories")),
 		OPT_END(),
 	};
 	const char **source, **destination, **dest_path, **submodule_gitfile;
@@ -220,8 +221,8 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	if (dest_path[0][0] == '\0')
 		/* special case: "." was normalized to "" */
 		destination = internal_prefix_pathspec(dest_path[0], argv, argc, DUP_BASENAME);
-	else if (!lstat(dest_path[0], &st) &&
-			S_ISDIR(st.st_mode)) {
+	else if (create_parents ||
+		 (!lstat(dest_path[0], &st) && S_ISDIR(st.st_mode))) {
 		destination = internal_prefix_pathspec(dst_w_slash, argv, argc, DUP_BASENAME);
 	} else {
 		if (!path_in_sparse_checkout(dst_w_slash, &the_index) &&
@@ -381,7 +382,8 @@ dir_check:
 			bad = _("multiple sources for the same target");
 			goto act_on_entry;
 		}
-		if (is_dir_sep(dst[strlen(dst) - 1])) {
+
+		if (!create_parents && is_dir_sep(dst[strlen(dst) - 1])) {
 			bad = _("destination directory does not exist");
 			goto act_on_entry;
 		}
@@ -459,11 +461,18 @@ remove_entry:
 		if (show_only)
 			continue;
 		if (!(mode & (INDEX | SPARSE | SKIP_WORKTREE_DIR)) &&
-		    !(dst_mode & (SKIP_WORKTREE_DIR | SPARSE)) &&
-		    rename(src, dst) < 0) {
-			if (ignore_errors)
-				continue;
-			die_errno(_("renaming '%s' failed"), src);
+		    !(dst_mode & (SKIP_WORKTREE_DIR | SPARSE))) {
+			if (create_parents && safe_create_leading_directories_const(dst) < 0) {
+				if (ignore_errors)
+					continue;
+				die_errno(_("creating parent directories for '%s' failed"), dst);
+			}
+
+			if (rename(src, dst) < 0) {
+				if (ignore_errors)
+					continue;
+				die_errno(_("renaming '%s' failed"), src);
+			}
 		}
 		if (submodule_gitfile[i]) {
 			if (!update_path_in_gitmodules(src, dst))
