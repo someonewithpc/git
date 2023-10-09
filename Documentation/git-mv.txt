@@ -15,13 +15,14 @@ DESCRIPTION
 -----------
 Move or rename a file, directory or symlink.
 
- git mv [-v] [-f] [-n] [-k] <source> <destination>
- git mv [-v] [-f] [-n] [-k] <source> ... <destination directory>
+ git mv [-v] [-f] [-n] [-k] [-p] <source> <destination>
+ git mv [-v] [-f] [-n] [-k] [-p] <source> ... <destination directory>
 
 In the first form, it renames <source>, which must exist and be either
 a file, symlink or directory, to <destination>.
-In the second form, the last argument has to be an existing
-directory; the given sources will be moved into this directory.
+In the second form, the last argument refers to a directory, which has
+to exist unless -p is specified, in which case it gets created; the
+given sources will be moved into this directory.
 
 The index is updated after successful completion, but the change must still be
 committed.
@@ -39,6 +40,9 @@ OPTIONS
 -n::
 --dry-run::
 	Do nothing; only show what would happen
+-p::
+--parents::
+	Create missing parent directories in the <destination> or <destination directory> path. Similar to `mkdir -p', all missing leading directories are created.
 
 -v::
 --verbose::
