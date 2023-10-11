@@ -109,6 +109,7 @@ struct rebase_options {
 		REBASE_DIFFSTAT = 1<<2,
 		REBASE_FORCE = 1<<3,
 		REBASE_INTERACTIVE_EXPLICIT = 1<<4,
+		REBASE_EDIT_MESSAGE = 1<<5,
 	} flags;
 	struct strvec git_am_opts;
 	enum action action;
@@ -136,25 +137,25 @@ struct rebase_options {
 	int config_update_refs;
 };
 
-#define REBASE_OPTIONS_INIT {			  	\
-		.type = REBASE_UNSPECIFIED,	  	\
-		.empty = EMPTY_UNSPECIFIED,	  	\
-		.keep_empty = 1,			\
-		.default_backend = "merge",	  	\
-		.flags = REBASE_NO_QUIET, 		\
-		.git_am_opts = STRVEC_INIT,		\
+#define REBASE_OPTIONS_INIT {					\
+		.type = REBASE_UNSPECIFIED,			\
+		.empty = EMPTY_UNSPECIFIED,			\
+		.keep_empty = 1,				\
+		.default_backend = "merge",			\
+		.flags = REBASE_NO_QUIET | REBASE_EDIT_MESSAGE, \
+		.git_am_opts = STRVEC_INIT,			\
 		.exec = STRING_LIST_INIT_NODUP,		\
-		.git_format_patch_opt = STRBUF_INIT,	\
-		.fork_point = -1,			\
-		.reapply_cherry_picks = -1,             \
-		.allow_empty_message = 1,               \
-		.autosquash = -1,                       \
-		.config_autosquash = -1,                \
-		.rebase_merges = -1,                    \
-		.config_rebase_merges = -1,             \
-		.update_refs = -1,                      \
-		.config_update_refs = -1,               \
-		.strategy_opts = STRING_LIST_INIT_NODUP,\
+		.git_format_patch_opt = STRBUF_INIT,		\
+		.fork_point = -1,				\
+		.reapply_cherry_picks = -1,			\
+		.allow_empty_message = 1,			\
+		.autosquash = -1,				\
+		.config_autosquash = -1,			\
+		.rebase_merges = -1,				\
+		.config_rebase_merges = -1,			\
+		.update_refs = -1,				\
+		.config_update_refs = -1,			\
+		.strategy_opts = STRING_LIST_INIT_NODUP,	\
 	}
 
 static struct replay_opts get_replay_opts(const struct rebase_options *opts)
@@ -195,6 +196,8 @@ static struct replay_opts get_replay_opts(const struct rebase_options *opts)
 		oidcpy(&replay.squash_onto, opts->squash_onto);
 		replay.have_squash_onto = 1;
 	}
+
+	replay.edit = (opts->flags & REBASE_EDIT_MESSAGE) != 0;
 
 	return replay;
 }
@@ -1189,6 +1192,7 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 			 N_("automatically re-schedule any `exec` that fails")),
 		OPT_BOOL(0, "reapply-cherry-picks", &options.reapply_cherry_picks,
 			 N_("apply all changes, even those already present upstream")),
+		OPT_BIT('e', "edit", &options.flags, N_("force edit of commit"), REBASE_EDIT_MESSAGE),
 		OPT_END(),
 	};
 	int i;
